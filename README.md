@@ -1,8 +1,6 @@
 # M2DS Deep Learning 2 project
 
-[![Build & Test](https://github.com/baptiste-pasquier/m2ds-deep-learning-2-project/actions/workflows/main.yml/badge.svg)](https://github.com/baptiste-pasquier/m2ds-deep-learning-2-project/actions/workflows/main.yml)
 [![Code quality](https://github.com/baptiste-pasquier/m2ds-deep-learning-2-project/actions/workflows/quality.yml/badge.svg)](https://github.com/baptiste-pasquier/m2ds-deep-learning-2-project/actions/workflows/quality.yml)
-[![codecov](https://codecov.io/github/baptiste-pasquier/m2ds-deep-learning-2-project/branch/main/graph/badge.svg)](https://codecov.io/gh/baptiste-pasquier/m2ds-deep-learning-2-project)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 

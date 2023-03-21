@@ -12,7 +12,7 @@ repos:
           - flake8-bugbear
           - flake8-comprehensions
           - flake8-simplify
-          - pep8-naming
+          # - pep8-naming
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
@@ -33,7 +33,7 @@ repos:
           - flake8-bugbear
           - flake8-comprehensions
           - flake8-simplify
-          - pep8-naming
+          # - pep8-naming
       - id: nbqa-isort
       - id: nbqa-pyupgrade
         args: ["--py38-plus"]

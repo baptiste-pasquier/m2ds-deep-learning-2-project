@@ -1,13 +1,14 @@
+import random
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
-from tqdm.auto import tqdm
 from sklearn.utils import shuffle
-
-import random
+from tqdm.auto import tqdm
 
 
 def lire_alpha_digit_one(char):
+    """Read one character from the binaryalphadigs.mat file."""
     binaryalphadigs = scipy.io.loadmat("data/binaryalphadigs.mat")
 
     class_labels = (
@@ -22,12 +23,46 @@ def lire_alpha_digit_one(char):
 
 
 def lire_alpha_digit(*chars):
+    """Read characters from the binaryalphadigs.mat file."""
     result_list = [lire_alpha_digit_one(char) for char in chars]
 
     return np.concatenate(result_list)
 
 
+def lire_MNIST(split: str) -> tuple[np.ndarray, np.ndarray]:
+    """Read MNIST data.
+
+    Parameters
+    ----------
+    split : str
+        "train" or "test"
+
+    Returns
+    -------
+    X: np.ndarray, size (n, 784)
+    y: np.ndarray, size (n)
+    """
+    data = scipy.io.loadmat("data/mnist_all.mat")
+
+    X_list = []
+    y_list = []
+    for i in range(10):
+        X_i = data[split + str(i)]
+        y_i = i * np.ones(X_i.shape[0])
+        X_list.append(X_i)
+        y_list.append(y_i)
+    X = np.vstack(X_list)
+    y = np.concatenate(y_list)
+
+    X = X >= 128
+    X = np.array(X, dtype=int)
+    y = np.array(y, dtype=int)
+
+    return X, y
+
+
 def plot_grid(X, image_size):
+    """Plot a grid of images."""
     fig, axes = plt.subplots(2, 10, figsize=(10, 2.5))
 
     for ax in axes.ravel():
@@ -41,16 +76,17 @@ def plot_grid(X, image_size):
     plt.show()
 
 
+# --------------------------------- RBM model -------------------------------- #
+
+
 class RBM:
     def __init__(self, p: int, q: int):
-        """_summary_
+        """Init RBM model.
 
         Parameters
         ----------
         p : int
-            _description_
         q : int
-            _description_
         """
         self.p = p
         self.q = q
@@ -59,8 +95,7 @@ class RBM:
         self.W = np.random.normal(loc=0, scale=np.sqrt(0.01), size=(p, q))
 
     def entree_sortie(self, X: np.ndarray) -> np.ndarray:
-        """_summary_
-
+        """
         Parameters
         ----------
         X : np.ndarray, size (n, p)
@@ -76,8 +111,7 @@ class RBM:
         return sortie
 
     def sortie_entree(self, H: np.ndarray) -> np.ndarray:
-        """_summary_
-
+        """
         Parameters
         ----------
         H : np.ndarray, size (n, q)
@@ -93,8 +127,7 @@ class RBM:
         return entree
 
     def calcul_softmax(self, X: np.ndarray) -> np.ndarray:
-        """_summary_
-
+        """
         Parameters
         ----------
         X : np.ndarray, size (n, p)
@@ -102,10 +135,9 @@ class RBM:
 
         Returns
         -------
-        np.ndarray
-            _description_
+        np.ndarray, size (n, p)
+            softmax
         """
-        # sortie = self.entree_sortie(X)
         sortie = X @ self.W + self.b
 
         proba = np.exp(sortie) / np.sum(np.exp(sortie), axis=1, keepdims=True)
@@ -118,7 +150,7 @@ class RBM:
         n_epochs: int,
         learning_rate: float,
         batch_size: int,
-        plot=True,
+        plot: bool = True,
     ):
         """Train the RBM.
 
@@ -129,6 +161,8 @@ class RBM:
         n_epochs : int
         learning_rate : float
         batch_size : int
+        plot : bool, optional
+            by default True
         """
         error_history = []
         with tqdm(range(n_epochs)) as pbar:
@@ -174,8 +208,7 @@ class RBM:
         return error_history
 
     def generer_image(self, n_images: int, n_gibbs: int) -> list:
-        """_summary_
-
+        """
         Parameters
         ----------
         n_images : int
@@ -184,7 +217,7 @@ class RBM:
         Returns
         -------
         list
-            _description_
+            list of images
         """
         output = []
         for _ in range(n_images):
@@ -196,12 +229,27 @@ class RBM:
         return output
 
 
+# --------------------------------- DBN model -------------------------------- #
+
+
 class DBN:
-    def __init__(self, config_list):
+    def __init__(self, config_list: list):
+        """Init DBN model.
+
+        Parameters
+        ----------
+        config_list : list
+            list of config for each RBM inside the DBN
+        """
         self.RBM_list = [RBM(*config) for config in config_list]
 
     def train(
-        self, X: np.ndarray, n_epochs: int, learning_rate: float, batch_size: int
+        self,
+        X: np.ndarray,
+        n_epochs: int,
+        learning_rate: float,
+        batch_size: int,
+        plot: bool = True,
     ):
         """Train the DBN.
 
@@ -212,15 +260,19 @@ class DBN:
         n_epochs : int
         learning_rate : float
         batch_size : int
+        plot : bool, optional
+            by default True
         """
         X = X.copy()
+        error_history = []
         for rbm in self.RBM_list:
-            rbm.train(X, n_epochs, learning_rate, batch_size)
+            history = rbm.train(X, n_epochs, learning_rate, batch_size, plot=plot)
             X = rbm.entree_sortie(X)
+            error_history.append(history)
+        return error_history
 
     def generer_image(self, n_images: int, n_gibbs: int) -> list:
-        """_summary_
-
+        """
         Parameters
         ----------
         n_images : int
@@ -229,7 +281,7 @@ class DBN:
         Returns
         -------
         list
-            _description_
+            list of images
         """
         output = self.RBM_list[-1].generer_image(n_images, n_gibbs)
 
@@ -242,13 +294,29 @@ class DBN:
         return output
 
 
+# --------------------------------- DNN model -------------------------------- #
+
+
 class DNN:
     def __init__(self, config_list):
+        """Init DNN model.
+
+        Parameters
+        ----------
+        config_list : list
+            list of config for each RBM inside the DBN
+            + config for the classification layer.
+        """
         self.DBN = DBN(config_list[:-1])
         self.RBM_classif = RBM(*config_list[-1])
 
     def pretrain(
-        self, X: np.ndarray, n_epochs: int, learning_rate: float, batch_size: int
+        self,
+        X: np.ndarray,
+        n_epochs: int,
+        learning_rate: float,
+        batch_size: int,
+        plot: bool = True,
     ):
         """Pretrain the DNN.
 
@@ -259,12 +327,29 @@ class DNN:
         n_epochs : int
         learning_rate : float
         batch_size : int
+        plot : bool, optional
+            by default True
         """
         self.DBN.train(
-            X=X, n_epochs=n_epochs, learning_rate=learning_rate, batch_size=batch_size
+            X=X,
+            n_epochs=n_epochs,
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            plot=plot,
         )
 
-    def entree_sortie_reseau(self, X):
+    def entree_sortie_reseau(self, X: np.ndarray) -> tuple:
+        """
+        Parameters
+        ----------
+        X : np.ndarray, size (n, p)
+            input data
+
+        Returns
+        -------
+        tuple
+            list of outputs of each layer, proba of the classification layer
+        """
         liste_sorties = [X]
         for rbm in self.DBN.RBM_list:
             sortie_RBM = rbm.entree_sortie(liste_sorties[-1])
@@ -276,14 +361,28 @@ class DNN:
         liste_sorties.append(sortie_RBM)
         proba = self.RBM_classif.calcul_softmax(sortie_DBN)
 
-        # assert np.all(
-        #     proba
-        #     == np.exp(sortie_RBM) / np.sum(np.exp(sortie_RBM), axis=1, keepdims=True)
-        # )
-
         return liste_sorties, proba
 
-    def retropropagation(self, X, y, n_epochs, learning_rate, batch_size):
+    def retropropagation(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        n_epochs: int,
+        learning_rate: float,
+        batch_size: int,
+    ):
+        """Train the DNN model with backpropagation.
+
+        Parameters
+        ----------
+        X : np.ndarray, size (n, p)
+            input data
+        y : np.ndarray, size (n)
+            input label
+        n_epochs : int
+        learning_rate : float
+        batch_size : int
+        """
         X = X.copy()
         y = y.copy()
         loss_history = []
@@ -344,7 +443,21 @@ class DNN:
             ax.grid()
         plt.show()
 
-    def test(self, X, y):
+    def test(self, X: np.ndarray, y: np.ndarray) -> tuple[float, float]:
+        """Test the DNN model on X_test and y_test.
+
+        Parameters
+        ----------
+        X : np.ndarray, size (n, p)
+            test data
+        y : np.ndarray, size (n)
+            test label
+
+        Returns
+        -------
+        tuple[float, float]
+            loss and accuracy
+        """
         _, proba = self.entree_sortie_reseau(X)
         loss = cross_entropy(proba, y)
         pred = proba.argmax(axis=1)
@@ -353,40 +466,8 @@ class DNN:
         return loss, acc
 
 
-def lire_MNIST(split: str) -> tuple[np.ndarray, np.ndarray]:
-    """_summary_
-
-    Parameters
-    ----------
-    split : str
-        "train" or "test"
-
-    Returns
-    -------
-    X: np.ndarray, size (n, 784)
-    y: np.ndarray, size (n)
-    """
-    data = scipy.io.loadmat("data/mnist_all.mat")
-
-    X_list = []
-    y_list = []
-    for i in range(10):
-        X_i = data[split + str(i)]
-        y_i = i * np.ones(X_i.shape[0])
-        X_list.append(X_i)
-        y_list.append(y_i)
-    X = np.vstack(X_list)
-    y = np.concatenate(y_list)
-
-    X = X >= 128
-    X = np.array(X, dtype=int)
-    y = np.array(y, dtype=int)
-
-    return X, y
-
-
 def cross_entropy(proba: np.ndarray, y: np.ndarray) -> float:
-    """_summary_
+    """Cross entropy loss function.
 
     Parameters
     ----------

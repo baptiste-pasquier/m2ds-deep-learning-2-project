@@ -22,7 +22,8 @@ poetry install
 pip install -e .
 ```
 
-3. Install pre-commit
-```bash
-pre-commit install
-```
+3. Download data inside the `data` folder :
+
+https://cs.nyu.edu/~roweis/data/mnist_all.mat
+
+https://cs.nyu.edu/~roweis/data/binaryalphadigs.mat
